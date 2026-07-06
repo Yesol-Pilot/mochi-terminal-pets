@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mochi Terminal Pets — Your terminal sessions, alive.</title>
+<meta name="description" content="A lightweight desktop overlay that turns your terminal sessions into cute animated pixel pets. CPU-aware, AI token tracking, click-to-focus. macOS & Windows.">
+<meta name="keywords" content="terminal pets, tmux, developer tools, desktop overlay, pixel pets, AI agent, terminal companion">
+<meta name="author" content="Neogenesis">
+<meta property="og:title" content="Mochi Terminal Pets — Your terminal sessions, alive.">
+<meta property="og:description" content="Cute animated pixel pets that live on your screen and represent your terminal sessions. CPU-aware behavior, AI token tracking, click-to-focus navigation.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://store.neogenesis.app/mochi">
+<meta property="og:image" content="https://store.neogenesis.app/mochi/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mochi Terminal Pets — Your terminal sessions, alive.">
+<meta name="twitter:description" content="Cute animated pixel pets for your terminal sessions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f0f23;
+  --bg-surface: #161630;
+  --bg-card: #1a1a3e;
+  --accent: #ff6b9d;
+  --accent-light: #ff8fb8;
+  --accent-glow: rgba(255, 107, 157, 0.25);
+  --text: #e8e8f0;
+  --text-muted: #8888aa;
+  --text-dim: #5a5a7a;
+  --gradient-hero: linear-gradient(135deg, #0f0f23 0%, #1a1040 40%, #0f0f23 100%);
+  --gradient-accent: linear-gradient(135deg, #ff6b9d, #c084fc);
+  --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5 { font-family: 'Space Grotesk', sans-serif; line-height: 1.2; }
+
+a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--accent-light); }
+
+.container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Fade-in on scroll ── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.fade-in-delay-1 { transition-delay: 0.1s; }
+.fade-in-delay-2 { transition-delay: 0.2s; }
+.fade-in-delay-3 { transition-delay: 0.3s; }
+.fade-in-delay-4 { transition-delay: 0.4s; }
+
+/* ── Nav ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 16px 0;
+  background: rgba(15, 15, 35, 0.7);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.3s;
+}
+nav .container { display: flex; align-items: center; justify-content: space-between; }
+.nav-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 1.15rem;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.nav-logo span { font-weight: 400; opacity: 0.7; -webkit-text-fill-color: var(--text-muted); }
+.nav-links { display: flex; align-items: center; gap: 28px; }
+.nav-links a { color: var(--text-muted); font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+.btn-nav {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+  background: var(--accent); color: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none; cursor: pointer;
+}
+.btn-nav:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); color: #fff; }
+.nav-mobile-toggle { display: none; background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 120px 24px 80px;
+  background: var(--gradient-hero);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle at 60% 40%, rgba(255, 107, 157, 0.06) 0%, transparent 50%),
+              radial-gradient(circle at 30% 70%, rgba(192, 132, 252, 0.05) 0%, transparent 50%);
+  animation: heroShift 20s ease-in-out infinite alternate;
+}
+@keyframes heroShift { 0% { transform: translate(0, 0); } 100% { transform: translate(-5%, 3%); } }
+
+.hero-inner { position: relative; z-index: 1; text-align: center; max-width: 800px; }
+
+/* Hero mascot - real character image */
+.hero-mascot {
+  width: 180px; height: 180px; margin: 0 auto 40px;
+  animation: mascotFloat 4s ease-in-out infinite;
+  position: relative;
+  filter: drop-shadow(0 0 40px rgba(255, 107, 157, 0.4)) drop-shadow(0 0 80px rgba(255, 107, 157, 0.15));
+}
+.hero-mascot img {
+  width: 100%; height: 100%; object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+@keyframes mascotFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-14px) rotate(2deg); }
+  75% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+/* Product showcase section */
+.showcase { padding: 0 0 80px; text-align: center; }
+.showcase-img {
+  max-width: 900px; width: 90%; margin: 0 auto;
+  border-radius: var(--radius); border: 1px solid var(--border-subtle);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  transition: transform 0.4s ease;
+}
+.showcase-img:hover { transform: scale(1.02); }
+.showcase-caption {
+  margin-top: 20px; font-size: 0.85rem; color: var(--text-muted);
+}
+
+/* Spritesheet gallery */
+.sprite-gallery { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-top: 40px; }
+.sprite-gallery img {
+  max-width: 380px; width: 45%; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  transition: transform 0.3s ease;
+}
+.sprite-gallery img:hover { transform: scale(1.05); }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 999px;
+  background: rgba(255, 107, 157, 0.1);
+  border: 1px solid rgba(255, 107, 157, 0.2);
+  font-size: 0.8rem; font-weight: 500; color: var(--accent-light);
+  margin-bottom: 28px;
+}
+.hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.hero h1 {
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+  font-weight: 700; letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+.hero h1 .gradient-text {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero .subtitle-kr {
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  color: var(--text-dim); font-weight: 400;
+  margin-bottom: 20px;
+}
+.hero .tagline {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  color: var(--text-muted); font-weight: 300;
+  margin-bottom: 40px;
+  max-width: 540px; margin-left: auto; margin-right: auto;
+}
+.hero-cta-group { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 16px 36px; border-radius: 999px;
+  background: var(--gradient-accent); color: #fff;
+  font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600;
+  border: none; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 4px 24px var(--accent-glow);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(255,107,157,0.35); color: #fff; }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 16px 32px; border-radius: 999px;
+  background: transparent; color: var(--text-muted);
+  font-family: 'Space Grotetz', sans-serif; font-size: 1.05rem; font-weight: 500;
+  border: 1px solid var(--border-subtle); cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-secondary:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+.hero-platforms {
+  margin-top: 24px; font-size: 0.82rem; color: var(--text-dim);
+}
+
+/* ── Section ── */
+section { padding: 100px 0; }
+.section-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 12px;
+}
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px;
+}
+.section-subtitle {
+  font-size: 1rem; color: var(--text-muted); max-width: 560px; margin: 0 auto 56px;
+}
+.section-header { text-align: center; margin-bottom: 56px; }
+
+/* ── Feature Grid ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+.feature-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 107, 157, 0.15);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+.feature-icon {
+  font-size: 1.8rem; margin-bottom: 16px;
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 107, 157, 0.08);
+}
+.feature-card h3 {
+  font-size: 1.1rem; font-weight: 600; margin-bottom: 4px;
+}
+.feature-card .kr { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 10px; }
+.feature-card p { font-size: 0.92rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── How it Works ── */
+.how-section { background: var(--bg-surface); }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; max-width: 960px; margin: 0 auto; }
+.step { text-align: center; position: relative; }
+.step-number {
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700;
+  background: rgba(255, 107, 157, 0.1);
+  border: 2px solid rgba(255, 107, 157, 0.25);
+  color: var(--accent);
+}
+.step h3 { font-size: 1.15rem; margin-bottom: 6px; }
+.step .kr { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 10px; }
+.step p { font-size: 0.9rem; color: var(--text-muted); max-width: 280px; margin: 0 auto; }
+.step-connector {
+  position: absolute; top: 28px; left: calc(50% + 36px); width: calc(100% - 72px);
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,107,157,0.3), rgba(255,107,157,0.05));
+}
+.step:last-child .step-connector { display: none; }
+
+/* ── Demo Preview ── */
+.demo-section { position: relative; }
+.demo-window {
+  max-width: 780px; margin: 0 auto;
+  border-radius: var(--radius);
+  background: #0d0d1f;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+.demo-titlebar {
+  display: flex; align-items: center; gap: 8px; padding: 14px 18px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.demo-dot { width: 12px; height: 12px; border-radius: 50%; }
+.demo-dot.r { background: #ff5f57; }
+.demo-dot.y { background: #febc2e; }
+.demo-dot.g { background: #28c840; }
+.demo-titlebar span { flex: 1; text-align: center; font-size: 0.78rem; color: var(--text-dim); }
+.demo-body { padding: 32px 28px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 0.85rem; line-height: 1.8; min-height: 200px; position: relative; }
+.demo-line { color: var(--text-muted); }
+.demo-line .prompt { color: var(--accent); }
+.demo-line .cmd { color: var(--text); }
+.demo-line .comment { color: var(--text-dim); }
+.demo-line .success { color: #28c840; }
+.demo-pets {
+  display: flex; align-items: flex-end; gap: 24px; padding: 16px 28px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.015);
+}
+.demo-pet {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  animation: petWalk 2s ease-in-out infinite;
+}
+.demo-pet:nth-child(2) { animation-delay: 0.5s; }
+.demo-pet:nth-child(3) { animation-delay: 1s; }
+@keyframes petWalk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.demo-pet-body {
+  width: 32px; height: 32px; border-radius: 8px;
+}
+.demo-pet-body.pink { background: linear-gradient(135deg, #ffb3d0, #ff6b9d); }
+.demo-pet-body.purple { background: linear-gradient(135deg, #d4b3ff, #a855f7); }
+.demo-pet-body.blue { background: linear-gradient(135deg, #93c5fd, #3b82f6); }
+.demo-pet-name {
+  font-size: 0.62rem; color: var(--text-dim);
+  padding: 2px 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+/* ── Testimonials ── */
+.testimonials-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+.testimonial-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 28px;
+  transition: transform 0.3s;
+}
+.testimonial-card:hover { transform: translateY(-3px); }
+.testimonial-stars { color: #fbbf24; font-size: 0.9rem; margin-bottom: 14px; letter-spacing: 2px; }
+.testimonial-card blockquote { font-size: 0.94rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 18px; font-style: italic; }
+.testimonial-author { display: flex; align-items: center; gap: 12px; }
+.testimonial-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gradient-accent); opacity: 0.6;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.testimonial-name { font-weight: 600; font-size: 0.9rem; }
+.testimonial-handle { font-size: 0.78rem; color: var(--text-dim); }
+
+/* ── Pricing ── */
+.pricing-section { background: var(--bg-surface); }
+.pricing-card {
+  max-width: 440px; margin: 0 auto;
+  background: var(--gradient-card);
+  border: 1px solid rgba(255, 107, 157, 0.15);
+  border-radius: 24px;
+  padding: 48px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 80px rgba(255, 107, 157, 0.05);
+}
+.pricing-card::before {
+  content: '';
+  position: absolute; top: -1px; left: 20%; right: 20%; height: 2px;
+  background: var(--gradient-accent);
+  border-radius: 0 0 4px 4px;
+}
+.pricing-card .badge-once {
+  display: inline-block; padding: 4px 14px; border-radius: 999px;
+  background: rgba(40, 200, 64, 0.1); border: 1px solid rgba(40, 200, 64, 0.2);
+  color: #4ade80; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 24px;
+}
+.pricing-price {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 3.8rem; font-weight: 700;
+  margin-bottom: 4px;
+}
+.pricing-price .currency { font-size: 1.6rem; vertical-align: super; color: var(--text-muted); }
+.pricing-price .cents { font-size: 1.6rem; vertical-align: super; }
+.pricing-note { color: var(--text-dim); font-size: 0.88rem; margin-bottom: 32px; }
+.pricing-features { list-style: none; text-align: left; margin-bottom: 36px; }
+.pricing-features li {
+  padding: 10px 0;
+  font-size: 0.92rem; color: var(--text-muted);
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.pricing-features li:last-child { border-bottom: none; }
+.pricing-features .check { color: #4ade80; font-size: 1rem; flex-shrink: 0; }
+.btn-buy {
+  display: block; width: 100%;
+  padding: 18px 0; border-radius: 999px;
+  background: var(--gradient-accent); color: #fff;
+  font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 600;
+  border: none; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 4px 24px var(--accent-glow);
+}
+.btn-buy:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(255,107,157,0.35); }
+.pricing-guarantee {
+  margin-top: 16px; font-size: 0.78rem; color: var(--text-dim);
+}
+
+/* ── Footer ── */
+footer {
+  padding: 48px 0; text-align: center;
+  border-top: 1px solid var(--border-subtle);
+}
+footer .footer-logo {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.1rem;
+  background: var(--gradient-accent);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}
+footer .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+footer .footer-links a { color: var(--text-dim); font-size: 0.85rem; }
+footer .footer-links a:hover { color: var(--text); }
+footer .footer-copy { color: var(--text-dim); font-size: 0.78rem; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-mobile-toggle { display: block; }
+  .hero { padding: 100px 20px 60px; }
+  .hero-mascot { width: 120px; height: 120px; margin-bottom: 28px; }
+  .sprite-gallery img { max-width: 100%; width: 90%; }
+  .showcase-img { width: 95%; }
+  .features-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; gap: 40px; }
+  .step-connector { display: none !important; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .pricing-card { padding: 36px 24px; }
+  .pricing-price { font-size: 3rem; }
+  section { padding: 72px 0; }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 2rem; }
+  .hero-cta-group { flex-direction: column; }
+  .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a5a; }
+</style>
+</head>
+<body>
+
+<!-- ─── Navigation ─── -->
+<nav>
+  <div class="container">
+    <div class="nav-logo">mochiPets <span>터미널 펫</span></div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it Works</a>
+      <a href="#testimonials">Reviews</a>
+      <a href="#pricing" class="btn-nav">Get Mochi — $4.99</a>
+    </div>
+    <button class="nav-mobile-toggle" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display === 'flex' ? 'none' : 'flex'" aria-label="Toggle menu">☰</button>
+  </div>
+</nav>
+
+<!-- ─── Hero ─── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-mascot fade-in"><img src="assets/mochi-character-design.png" alt="Mochi - cute pixel art desktop pet character" /></div>
+    <div class="hero-badge fade-in fade-in-delay-1">
+      <span class="dot"></span> Now available for macOS & Windows
+    </div>
+    <h1 class="fade-in fade-in-delay-1">
+      <span class="gradient-text">Mochi Terminal Pets</span>
+    </h1>
+    <p class="subtitle-kr fade-in fade-in-delay-2">모찌 터미널 펫</p>
+    <p class="tagline fade-in fade-in-delay-2">Your terminal sessions, alive.<br>Tiny pixel pets that walk, sleep, and react to your workflows — right on your desktop.</p>
+    <div class="hero-cta-group fade-in fade-in-delay-3">
+      <a href="https://store.neogenesis.app/mochi" class="btn-primary">Buy for $4.99 →</a>
+      <a href="#how-it-works" class="btn-secondary">See how it works</a>
+    </div>
+    <p class="hero-platforms fade-in fade-in-delay-4">🍎 macOS (native Cocoa)&nbsp;&nbsp;·&nbsp;&nbsp;🪟 Windows (Python/Qt)&nbsp;&nbsp;·&nbsp;&nbsp;One-time purchase</p>
+  </div>
+</section>
+
+<!-- ─── Product Showcase ─── -->
+<section class="showcase fade-in">
+  <img class="showcase-img" src="assets/mochi-product-showcase.png" alt="Mochi Terminal Pets running on a macOS terminal — build, agent, server, and deploy pets walking along the bottom" />
+  <p class="showcase-caption">🖥️ Real-time terminal pet monitoring in action · 실시간 터미널 펫 모니터링</p>
+  <div class="sprite-gallery fade-in">
+    <img src="assets/mochi-states-spritesheet.png" alt="Mochi expressions: idle, working, sleeping, alert, completed, sad" />
+    <img src="assets/mochi-color-variants.png" alt="Mochi color variants: pink, mint, lavender, peach, sky blue" />
+  </div>
+</section>
+
+<!-- ─── Features ─── -->
+<section id="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-in">✦ Features · 기능</div>
+      <h2 class="section-title fade-in">Everything your terminal needs<br>to feel alive</h2>
+      <p class="section-subtitle fade-in">Seven thoughtfully crafted features that turn a sea of terminal tabs into a delightful, ambient experience.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-icon">💤</div>
+        <h3>Ambient CPU Awareness</h3>
+        <p class="kr">CPU 인식 동작</p>
+        <p>Pets walk when their terminal is working and curl up to sleep when idle. A living, breathing status indicator you'll actually enjoy watching.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-1">
+        <div class="feature-icon">🧠</div>
+        <h3>AI Token Tracking</h3>
+        <p class="kr">AI 토큰 추적</p>
+        <p>Real-time context window usage for Codex, Claude, and other AI agents displayed as a tiny progress bar above each pet.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-2">
+        <div class="feature-icon">👆</div>
+        <h3>Click-to-Focus</h3>
+        <p class="kr">클릭하여 포커스</p>
+        <p>Click any pet's nameplate and instantly jump to that terminal tab. Navigate dozens of sessions without hunting through a tab bar.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-3">
+        <div class="feature-icon">📌</div>
+        <h3>Drag &amp; Pin</h3>
+        <p class="kr">드래그 앤 핀</p>
+        <p>Manually position pets wherever you like on your screen. Pin important sessions front and center.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-1">
+        <div class="feature-icon">🔔</div>
+        <h3>Completion Alerts</h3>
+        <p class="kr">완료 알림</p>
+        <p>An audio cue and speech-bubble animation the moment a background task finishes. Never miss a completed build or test run again.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-2">
+        <div class="feature-icon">🎨</div>
+        <h3>Custom Skins</h3>
+        <p class="kr">커스텀 스킨</p>
+        <p>Bring your own pixel art sprites and sound packs. Share skins with the community or keep them personal.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-3">
+        <div class="feature-icon">⚡</div>
+        <h3>Zero Config</h3>
+        <p class="kr">설정 불필요</p>
+        <p>Just run the binary. Mochi auto-detects your terminal sessions, tmux panes, and active processes. Nothing to configure.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Demo Preview ─── -->
+<section class="demo-section" id="preview">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-in">◈ Preview · 미리보기</div>
+      <h2 class="section-title fade-in">Pets live at the bottom of your screen</h2>
+      <p class="section-subtitle fade-in">Each terminal session becomes a tiny companion. Here's what it looks like in action.</p>
+    </div>
+    <div class="demo-window fade-in">
+      <div class="demo-titlebar">
+        <div class="demo-dot r"></div>
+        <div class="demo-dot y"></div>
+        <div class="demo-dot g"></div>
+        <span>Terminal — zsh — 120×36</span>
+        <div style="width: 48px;"></div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-line"><span class="prompt">❯ </span><span class="cmd">mochi start</span></div>
+        <div class="demo-line"><span class="success">✓</span> <span class="comment">Detected 3 active sessions</span></div>
+        <div class="demo-line"><span class="comment">  → tmux:build   (cargo build --release)</span></div>
+        <div class="demo-line"><span class="comment">  → tmux:agent   (codex run "refactor auth")</span></div>
+        <div class="demo-line"><span class="comment">  → tmux:server  (npm run dev)</span></div>
+        <div class="demo-line"><span class="success">✓</span> <span class="comment">Spawning pets... 🐾</span></div>
+        <div class="demo-line" style="margin-top: 8px;"><span class="prompt">❯ </span><span class="cmd" style="opacity: 0.4;">_</span></div>
+      </div>
+      <div class="demo-pets">
+        <div class="demo-pet">
+          <div class="demo-pet-body pink"></div>
+          <span class="demo-pet-name">build 🔨</span>
+        </div>
+        <div class="demo-pet">
+          <div class="demo-pet-body purple"></div>
+          <span class="demo-pet-name">agent 🧠 48%</span>
+        </div>
+        <div class="demo-pet">
+          <div class="demo-pet-body blue"></div>
+          <span class="demo-pet-name">server 💤</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── How it Works ─── -->
+<section class="how-section" id="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-in">→ How it Works · 사용 방법</div>
+      <h2 class="section-title fade-in">Three steps. Zero friction.</h2>
+      <p class="section-subtitle fade-in">From download to desktop pets in under a minute.</p>
+    </div>
+    <div class="steps">
+      <div class="step fade-in">
+        <div class="step-connector"></div>
+        <div class="step-number">1</div>
+        <h3>Download &amp; Run</h3>
+        <p class="kr">다운로드 & 실행</p>
+        <p>Grab the binary for your platform. Double-click or run <code>mochi start</code> from any terminal.</p>
+      </div>
+      <div class="step fade-in fade-in-delay-1">
+        <div class="step-connector"></div>
+        <div class="step-number">2</div>
+        <h3>Auto-Detect</h3>
+        <p class="kr">자동 감지</p>
+        <p>Mochi scans for active terminal sessions, tmux panes, and running processes — instantly.</p>
+      </div>
+      <div class="step fade-in fade-in-delay-2">
+        <div class="step-number">3</div>
+        <h3>Meet Your Pets</h3>
+        <p class="kr">펫 만나기</p>
+        <p>Pixel pets appear at the bottom of your screen. Click, drag, and enjoy your ambient workspace.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Testimonials ─── -->
+<section id="testimonials">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-in">♡ Loved by Developers · 개발자 후기</div>
+      <h2 class="section-title fade-in">Don't take our word for it</h2>
+      <p class="section-subtitle fade-in">Here's what developers are saying about Mochi Terminal Pets.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card fade-in">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"I run 12+ tmux sessions daily. Mochi turned my workflow from 'where is that tab' chaos into something genuinely enjoyable. The AI token tracking alone is worth $5."</blockquote>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">🧑‍💻</div>
+          <div>
+            <div class="testimonial-name">Alex Chen</div>
+            <div class="testimonial-handle">@alexcodes · Staff Engineer</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-in fade-in-delay-1">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"Posted my setup to r/unixporn and it blew up. Everyone wanted to know about the little pixel pets walking across my bottom bar. Pure serotonin."</blockquote>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">🎨</div>
+          <div>
+            <div class="testimonial-name">Mika Tanaka</div>
+            <div class="testimonial-handle">@mika_dev · Open Source Contributor</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-in fade-in-delay-2">
+        <div class="testimonial-stars">★★★★★</div>
+        <blockquote>"The completion alerts are a game changer. I kick off long builds, work on something else, and my pet literally jumps up and down when it's done. 10/10 UX."</blockquote>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">⚡</div>
+          <div>
+            <div class="testimonial-name">Jordan Park</div>
+            <div class="testimonial-handle">@jparkml · ML Engineer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Pricing ─── -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-in">◉ Pricing · 가격</div>
+      <h2 class="section-title fade-in">One price. Forever yours.</h2>
+      <p class="section-subtitle fade-in">No subscriptions. No tracking. Just a delightful tool you own outright.</p>
+    </div>
+    <div class="pricing-card fade-in">
+      <div class="badge-once">One-time purchase</div>
+      <div class="pricing-price">
+        <span class="currency">$</span>4<span class="cents">.99</span>
+      </div>
+      <p class="pricing-note">Pay once, use forever. Free updates included.</p>
+      <ul class="pricing-features">
+        <li><span class="check">✓</span> macOS native Cocoa binary</li>
+        <li><span class="check">✓</span> Windows Python/Qt app</li>
+        <li><span class="check">✓</span> All 7 core features</li>
+        <li><span class="check">✓</span> Custom skins &amp; sounds</li>
+        <li><span class="check">✓</span> AI token tracking for all major agents</li>
+        <li><span class="check">✓</span> Free updates for life</li>
+        <li><span class="check">✓</span> Community skin marketplace access</li>
+      </ul>
+      <a href="https://store.neogenesis.app/mochi" class="btn-buy">Get Mochi Terminal Pets →</a>
+      <p class="pricing-guarantee">🔒 Secure payment · Instant download · 30-day money-back guarantee</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ─── -->
+<footer>
+  <div class="container">
+    <div class="footer-logo">mochiPets</div>
+    <div class="footer-links">
+      <a href="https://github.com/neogenesis/mochi-pets">GitHub</a>
+      <a href="mailto:hello@neogenesis.app">Contact</a>
+      <a href="#">Documentation</a>
+      <a href="#">Changelog</a>
+      <a href="#">Privacy</a>
+    </div>
+    <p class="footer-copy">© 2026 Neogenesis. Mochi Terminal Pets. Built with ♡ for terminal enthusiasts.</p>
+  </div>
+</footer>
+
+<script>
+// ─── IntersectionObserver: fade-in on scroll ───
+document.addEventListener('DOMContentLoaded', () => {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // ─── Smooth scroll for anchor links ───
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Close mobile nav
+        if (window.innerWidth <= 768) {
+          document.querySelector('.nav-links').style.display = 'none';
+        }
+      }
+    });
+  });
+
+  // ─── Nav background on scroll ───
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 40) {
+      nav.style.background = 'rgba(15, 15, 35, 0.92)';
+    } else {
+      nav.style.background = 'rgba(15, 15, 35, 0.7)';
+    }
+  }, { passive: true });
+});
+</script>
+</body>
+</html>
